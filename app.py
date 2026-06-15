@@ -15,7 +15,7 @@ st.markdown("""
     <div style='background-color:#1F497D; padding:20px; border-radius:10px; margin-bottom:20px; text-align:center;'>
         <h1 style='color:white; margin:0;'>📊 CPL MEASURE ENGINE</h1>
         <h3 style='color:#D9D9D9; margin:5px 0 0 0;'>Sistem Akumulasi & Tabulasi Rata-Rata CPL Program Studi</h3>
-        <p style='color:#F2F5F8; font-size:14px; margin:10px 0 0 0; font-style:italic;'>
+        <p style='color:#F2F5F8; font-size:14px; margin:10px 0 0 0;'>
             Dikembangkan oleh: <b>Edi Sukarmanto & Yuhka Sundaya (2026)</b><br>
             Fakultas Ekonomi dan Bisnis, Universitas Islam Bandung (Unisba)
         </p>
