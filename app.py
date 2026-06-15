@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pypdf
 import re
+import io
 
 # 1. Konfigurasi Halaman Utama Streamlit
 st.set_page_config(page_title="CPL Measure FEB Unisba", layout="wide")
@@ -22,7 +23,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-st.write("Silakan pilih atau seret banyak file PDF KRP mata kuliah sekaligus. Sistem akan otomatis membedah baris-baris tabel, mengambil nilai spesifik pada kolom terakhir **% Ketercapaian CPL MK**, lalu menghitung rata-rata kumulatifnya.")
+st.write("Silakan pilih atau seret banyak file PDF KRP mata kuliah sekaligus. Sistem akan otomatis membedah tabel, menghitung rata-rata kumulatif per jenis CPL, serta menyajikannya dalam bentuk **Grafik Radar (Spider Web)**.")
 
 # Target Capaian Batas Minimum Kelulusan Prodi
 target_capaian = 60.0
@@ -113,7 +114,7 @@ if uploaded_files:
         st.dataframe(df_rekap, use_container_width=True)
         
         st.markdown("---")
-        st.markdown("### 📈 2. Profil Rata-Rata Capaian & Visualisasi")
+        st.markdown("### 📈 2. Profil Rata-Rata Capaian & Visualisasi Radar")
         
         # LOGIKA INTI: Mengelompokkan dan menghitung rata-rata murni per Jenis CPL
         df_rata_rata = df_rekap.groupby("Jenis CPL")["% Ketercapaian CPL MK"].mean().reset_index()
@@ -134,10 +135,23 @@ if uploaded_files:
             st.write("#### Matriks Agregasi Kelulusan CPL")
             st.dataframe(df_rata_rata, use_container_width=True)
             
+            # --- FITUR DOWNLOAD EXCEL ---
+            buffer_excel = io.BytesIO()
+            with pd.ExcelWriter(buffer_excel, engine='openpyxl') as writer:
+                df_rata_rata.to_excel(writer, index=False, sheet_name='Ringkasan CPL Prodi')
+                df_rekap.to_excel(writer, index=False, sheet_name='Detail Data Per MK')
+            
+            st.download_button(
+                label="📥 Unduh Tabel Hasil (Excel)",
+                data=buffer_excel.getvalue(),
+                file_name="Laporan_Ketercapaian_CPL_FEB_Unisba.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+            
         with col_cht:
             num_cpl = len(df_rata_rata)
             
-            # Pengaman grafik jika jenis data CPL belum lengkap di atas 3 titik sudut
+            # Pengaman grafik jika jenis data CPL belum lengkap di atas 2 titik sudut
             if num_cpl < 3:
                 st.write("#### Grafik Batang Capaian CPL (Data < 3 Titik)")
                 fig, ax = plt.subplots(figsize=(6, 4))
@@ -158,29 +172,42 @@ if uploaded_files:
                 stats = df_rata_rata["Rata-Rata Ketercapaian (%)"].tolist()
                 targets = [target_capaian] * num_cpl
                 
-                # Menutup loop putaran lingkaran radar
+                # Menutup loop putaran lingkaran radar agar garisnya menyambung kembali ke titik awal
                 labels = np.concatenate((labels, [labels[0]]))
                 stats = np.concatenate((stats, [stats[0]]))
                 targets = np.concatenate((targets, [targets[0]]))
                 
+                # Menghitung pembagian sudut melingkar berdasarkan jumlah data
                 angles = np.linspace(0, 2 * np.pi, len(stats))
                 
                 fig, ax = plt.subplots(figsize=(5, 5), subplot_kw=dict(polar=True))
                 
-                # Plot Data Riil Capaian
+                # 1. Menggambar Bidang Capaian Riil Prodi (Warna Biru Utama)
                 ax.plot(angles, stats, color='#1F497D', linewidth=2, linestyle='solid', label='Capaian Riil')
                 ax.fill(angles, stats, color='#1F497D', alpha=0.25)
                 
-                # Plot Garis Target
+                # 2. Menggambar Lingkaran Batas Target Minimal (Warna Merah Putus-putus)
                 ax.plot(angles, targets, color='#C00000', linewidth=1.5, linestyle='--', label=f'Batas Target ({target_capaian}%)')
                 
+                # Konfigurasi label sudut dan batasan angka grid radar
                 ax.set_thetagrids(np.degrees(angles[:-1]), labels[:-1], fontsize=11, fontweight='bold')
                 ax.set_rlabel_position(0)
-                plt.yticks([20, 40, 60, 80, 100], ["20", "40", "60", "80", "100"], color="grey", size=9)
+                plt.yticks([20, 40, 60, 80, 100], ["20%", "40%", "60%", "80%", "100%"], color="grey", size=9)
                 plt.ylim(0, 100)
                 
-                ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1.1))
+                ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.1))
                 st.pyplot(fig)
+                
+                # --- FITUR DOWNLOAD GRAFIK PNG ---
+                buffer_png = io.BytesIO()
+                fig.savefig(buffer_png, format='png', bbox_inches='tight', dpi=300)
+                
+                st.download_button(
+                    label="🖼️ Unduh Grafik Profil CPL (PNG)",
+                    data=buffer_png.getvalue(),
+                    file_name="Grafik_Profil_CPL_FEB_Unisba.png",
+                    mime="image/png"
+                )
             
 else:
     st.info("💡 Menunggu dokumen KRP diunggah. Silakan kumpulkan file-file PDF KRP prodi untuk memulai kalkulasi otomatis.")
@@ -191,6 +218,6 @@ else:
 st.markdown("""
     <hr style='border-top: 1px solid #D9D9D9;'>
     <p style='text-align: center; color: grey; font-size: 12px;'>
-        © 2026 FEB Unisba CPL Measure Engine | Dikembangkan oleh Edi Sukarmanto & Yuhka Sundaya
+        © 2026 FEB Unisba CPL Measure Engine | Inovasi Sistem Kurikulum Edi Sukarmanto & Yuhka Sundaya
     </p>
 """, unsafe_allow_html=True)
