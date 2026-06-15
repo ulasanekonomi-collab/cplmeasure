@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 
 st.set_page_config(page_title="Pengukuran CPL Interaktif", layout="wide")
 
@@ -41,7 +40,7 @@ target_capaian = 60.0
 # Membuat ringkasan dataframe hasil
 data_hasil = {
     "Komponen CPL": ["CPL1", "CPL2"],
-    "Nilai Capaian prodi": [round(cpl1_akhir, 2), round(cpl2_akhir, 2)],
+    "Nilai Capaian Prodi": [round(cpl1_akhir, 2), round(cpl2_akhir, 2)],
     "Target": [target_capaian, target_capaian],
     "Status": [
         "TERCAPAI" if cpl1_akhir >= target_capaian else "TIDAK TERCAPAI",
@@ -51,7 +50,7 @@ data_hasil = {
 df_hasil = pd.DataFrame(data_hasil)
 
 # =========================================================
-# CONTAINER 3: VISUALISASI HASIL & GRAFIK RADAR
+# CONTAINER 3: VISUALISASI HASIL & GRAFIK BATANG HORIZONTAL
 # =========================================================
 st.markdown("---")
 st.markdown("### 📈 Ringkasan Ketercapaian")
@@ -63,32 +62,27 @@ with res_col1:
     st.dataframe(df_hasil, use_container_width=True)
 
 with res_col2:
-    st.write("#### Grafik Radar (Spider Web Chart)")
+    st.write("#### Grafik Perbandingan CPL")
     
-    # Setup data untuk radar chart (harus memutar/close loop)
-    labels = ['CPL1', 'CPL2']
-    stats = [cpl1_akhir, cpl2_akhir]
-    targets = [target_capaian, target_capaian]
+    # Membuat Bar Chart Horizontal yang aman dari error koordinat
+    fig, ax = plt.subplots(figsize=(6, 3.5))
     
-    # Agar garis grafiknya menyambung melingkar
-    labels = np.concatenate((labels, [labels[0]]))
-    stats = np.concatenate((stats, [stats[0]]))
-    targets = np.concatenate((targets, [targets[0]]))
+    # Set warna dinamis (biru jika tercapai, merah jika tidak)
+    colors = ['#1F497D' if val >= target_capaian else '#C00000' for val in df_hasil["Nilai Capaian Prodi"]]
     
-    label_loc = np.linspace(start=0, stop=2 * np.pi, num=len(stats))
+    bars = ax.barh(df_hasil["Komponen CPL"], df_hasil["Nilai Capaian Prodi"], color=colors, height=0.5)
     
-    fig, ax = plt.subplots(figsize=(4, 4), subplot_kw=dict(polar=True))
+    # Tambah garis pembatas target kelulusan prodi (Batas Red Line)
+    ax.axvline(x=target_capaian, color='red', linestyle='--', linewidth=1.5, label=f'Target Batas ({target_capaian})')
     
-    # Gambar garis capaian riil
-    ax.plot(label_loc, stats, label='Capaian Real', color='#1F497D', linewidth=2)
-    ax.fill(label_loc, stats, color='#1F497D', alpha=0.2)
-    
-    # Gambar garis target minimal
-    ax.plot(label_loc, targets, label='Target Batas', color='red', linestyle='--', linewidth=1.5)
-    
-    # Set pengatur sudut label
-    ax.set_thetagrids(np.degrees(label_loc[:-1]), ['CPL1', 'CPL2'])
-    ax.set_ylim(0, 100)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
+    # Tambahkan label angka di ujung bar masing-masing
+    for bar in bars:
+        width = bar.get_width()
+        ax.text(width + 2, bar.get_y() + bar.get_height()/2, f'{width}', 
+                va='center', ha='left', fontsize=10, fontweight='bold')
+                
+    ax.set_xlim(0, 100)
+    ax.set_xlabel('Nilai Capaian')
+    ax.legend(loc='lower right')
     
     st.pyplot(fig)
